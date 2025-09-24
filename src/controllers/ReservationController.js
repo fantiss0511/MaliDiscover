@@ -12,6 +12,24 @@ const ReservationController = {
         }
 
         try {
+            // Vérification de l’authentification
+            if (!req.user) {
+                return res.status(401).json({ error: "Utilisateur non connecter." });
+            }
+
+            const utilisateurId = req.user.uid;
+
+            // Vérification du rôle de l’utilisateur
+            const userDoc = await db.collection("Personne").doc(utilisateurId).get();
+            if (!userDoc.exists) {
+                return res.status(403).json({ error: "Compte utilisateur introuvable." });
+            }
+
+            const userData = userDoc.data();
+            if (userData.role !== "user") {
+                return res.status(403).json({ error: "Seuls les utilisateurs avec le rôle 'user' peuvent effectuer une réservation." });
+            }
+
             const {
                 id_restaurant,
                 id_hotel,
@@ -21,18 +39,15 @@ const ReservationController = {
                 nbre_personne,
             } = req.body;
 
-            // Vérification des champs requis (au moins date et nombre de personnes)
+            // Vérification des champs requis
             if (!date_reservation || !nbre_personne) {
                 return res.status(400).json({
                     error: "Les champs 'date_reservation' et 'nbre_personne' sont obligatoires.",
                 });
             }
 
-            // Récupération de l'UID automatiquement via authFirebase
-            const utilisateurId = req.user.uid;
-
             const docRef = await db.collection("reservations").add({
-                id_personne: personneId,
+                id_personne: utilisateurId,
                 id_restaurant: id_restaurant || null,
                 id_hotel: id_hotel || null,
                 id_evenement: id_evenement || null,

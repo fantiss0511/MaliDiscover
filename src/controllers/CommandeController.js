@@ -12,6 +12,24 @@ const CommandeController = {
         }
 
         try {
+            // Vérification de l’authentification
+            if (!req.user) {
+                return res.status(401).json({ error: "Utilisateur non connecter." });
+            }
+
+            const utilisateurId = req.user.uid;
+
+            // Vérification du rôle de l’utilisateur
+            const userDoc = await db.collection("Personne").doc(PersonneId).get();
+            if (!userDoc.exists) {
+                return res.status(403).json({ error: "Compte utilisateur introuvable." });
+            }
+
+            const userData = userDoc.data();
+            if (userData.role !== "user") {
+                return res.status(403).json({ error: "Seuls les utilisateurs avec le rôle 'user' peuvent effectuer une réservation." });
+            }
+
             const {
                 id_restaurant,
                 id_gestionnaire,
