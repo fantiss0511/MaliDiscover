@@ -12,24 +12,6 @@ const ReservationController = {
         }
 
         try {
-            // Vérification de l’authentification
-            if (!req.user) {
-                return res.status(401).json({ error: "Utilisateur non connecter." });
-            }
-
-            const utilisateurId = req.user.uid;
-
-            // Vérification du rôle de l’utilisateur
-            const userDoc = await db.collection("Personne").doc(utilisateurId).get();
-            if (!userDoc.exists) {
-                return res.status(403).json({ error: "Compte utilisateur introuvable." });
-            }
-
-            const userData = userDoc.data();
-            if (userData.role !== "user") {
-                return res.status(403).json({ error: "Seuls les utilisateurs avec le rôle 'user' peuvent effectuer une réservation." });
-            }
-
             const {
                 id_restaurant,
                 id_hotel,
@@ -39,15 +21,18 @@ const ReservationController = {
                 nbre_personne,
             } = req.body;
 
-            // Vérification des champs requis
+            // Vérification des champs requis (au moins date et nombre de personnes)
             if (!date_reservation || !nbre_personne) {
                 return res.status(400).json({
                     error: "Les champs 'date_reservation' et 'nbre_personne' sont obligatoires.",
                 });
             }
 
+            // Récupération de l'UID automatiquement via authFirebase
+            const utilisateurId = req.user.uid;
+
             const docRef = await db.collection("reservations").add({
-                id_personne: utilisateurId,
+                id_personne: utilisateurId, // Correction: utiliser l'UID Firebase
                 id_restaurant: id_restaurant || null,
                 id_hotel: id_hotel || null,
                 id_evenement: id_evenement || null,
@@ -61,6 +46,32 @@ const ReservationController = {
             res.status(201).json({
                 message: "Réservation créée avec succès",
                 id: docRef.id,
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    // Récupérer automatiquement les infos de l'utilisateur connecté
+    async getUserInfo(req, res) {
+        try {
+            // ⚡ Grâce à authFirebase, req.user contient déjà les infos Firebase
+            const user = req.user;
+
+            // Récupérer plus de détails dans Firestore si tu stockes un profil utilisateur
+            const userDoc = await db.collection("users").doc(user.uid).get();
+            let userProfile = {};
+
+            if (userDoc.exists) {
+                userProfile = userDoc.data();
+            }
+
+            res.status(200).json({
+                uid: user.uid,
+                email: user.email,
+                name: user.name || userProfile.name || "",
+                phone: user.phone || userProfile.phone || "",
+                ...userProfile, // merge avec le profil Firestore si besoin
             });
         } catch (error) {
             res.status(500).json({ error: error.message });

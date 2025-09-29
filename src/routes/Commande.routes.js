@@ -191,7 +191,6 @@ const CommandeController = require("../controllers/CommandeController");
  *         description: Commande créée avec succès
  */
 router.post("/", CommandeController.createCommande);
-
 /**
  * @swagger
  * /api/commandes:
